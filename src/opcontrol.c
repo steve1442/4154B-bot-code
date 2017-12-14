@@ -1,107 +1,141 @@
 #include "main.h"
 
+const int ground = 70, armthing[10] = {70,70,200,500,630,810,7,8,9,10};  // for 0 then make it either 49 or 75
+const int cbposition[5] = {1310};
+const int cbendpos = 100, cbstartpos = 0, cb_pwm = 127, arm_const = 127;
+// leftback 1
+// leftmiddle 2
+// bigarm 8
+// mogodp 4
+// smallarm 7
+// rightmiddle 9
+// rightback 10
+int FrontLeft = 10, FrontRight = 3, FrontMidLeft = 1, FrontMidRight = 2, BackMidLeft = 4, BackMidRight = 7,
+BackLeft = 5, BackRight = 6, Lockr = 8, lockl = 9;
 
-
-const int armthing[10] = {1,2,3,4,5,6,7,8,9,10}, cbendpos = 100, cbstartpos = 0, cb_pwm = 127, arm_const = 127, leftfront = 1,
-lefttback = 3, rightfront = 10, rightback = 7, rightarm = 2, leftarm = 9, mobilegoalright = 4, mobilegoalleft = 8, clawleft = 5, clawright = 6,
-stop = 0, maxmenus = 6, bound = 100, larmpot = 5, rarmpot = 2, cbpot = 3, clawpot = 1, rightshaft = 1, leftshaft = 3;
-int menu = 2;
-bool overrided = true;
-struct motor{int m1, m2, m3, m4, m5, m6, m7, m8, m9, m10;}motor;
-struct dgtl{bool d1, d3;}dgtl;
-struct last{bool arm, override, su, sd, co, cc, mo, mc; int lj;}last;
-void lcdmenu(){
-	int lcdjoystick = joystickGetAnalog(1, 4), test = millis();;
-	if(bound <= abs(lcdjoystick) && bound > last.lj){menu = (menu + maxmenus + lcdjoystick/abs(lcdjoystick) % maxmenus);}
-	last.lj = abs(lcdjoystick);
-	switch(menu){
-		case 1:lcdPrint(uart1, 1, "main bat %d", powerLevelMain());lcdPrint(uart1, 2, "back-up bat %d", powerLevelMain());
-		case 2:lcdPrint(uart1, 1, "L Arm Pot %d", analogRead(larmpot));lcdPrint(uart1, 2, "R Arm Pot %d", analogRead(rarmpot));
-		case 3:lcdPrint(uart1, 1, "CLAW POT %d", analogRead(clawpot));lcdPrint(uart1, 2, "run time %d", test);
-		//case 4:lcdPrint(uart1, 1, "Stack %d", stack); lcdPrint(uart1, 2, "                ");
-		case 5:lcdPrint(uart1, 1, "   r8 my code   ");lcdPrint(uart1, 2, "  954-849-1442  ");
-		case 6:lcdPrint(uart1, 1, "Steve Coded This");lcdPrint(uart1, 2, "       :)       ");
-		case 7:lcdPrint(uart1, 1, "  L ENCODER %d ", analogRead(leftshaft));lcdPrint(uart1, 2, " R ENCODER %d", analogRead(rightshaft));
-		default:lcdPrint(uart1, 1,"      Error     ");lcdPrint(uart1, 2, "    No Screen   ");}}
-
-void drive(int left, int right){motor.m1 = -left; motor.m3 = -left; motor.m10 = -right; motor.m7 = right;}
-void arm(int pwm){motor.m2 = -pwm; motor.m9 = pwm;}
-//void cb(int pwm){motor.m8 = pwm; motor.m5 = pwm;}
-void MOGO(int pwm){motor.m4 = pwm; motor.m8 = -pwm;}
-void claw(int pwm){motor.m5 = -pwm; motor.m6 = pwm;}
-void update(){
-	motorSet(1, motor.m1); motorSet(2, motor.m2); motorSet(3, motor.m3); motorSet(4, motor.m4); motorSet(5, motor.m5);
-	motorSet(6, motor.m6); motorSet(7, motor.m7); motorSet(8, motor.m8); motorSet(9, motor.m9); motorSet(10, motor.m10);}
-
-void potentarm(int pwm, int potent, int potentval){
-	int nop = (potent - potentval)/abs(potent - potentval);
-	while(potentval != potent){arm(pwm * nop);}	arm(stop);}
-
-
-/*
-void potentcb(int pwm, int potent, int potentval){
-	int nop = (potent - potentval)/abs(potent - potentval);
-	while(potentval != potent){cb(pwm * nop);} cb(stop);}
-*?
-
-void scoredatcone(int x){
-	claw(true);
-	potentarm(arm_const, armthing[x], analogRead(rarmpot));
-	potentcb(cb_pwm, cbendpos, analogRead(cbpot));
-	claw(false);
-	potentcb(cb_pwm, cbstartpos, analogRead(cbpot));
-	potentarm(arm_const, armthing[0], analogRead(rarmpot));} */
-
-
-int previous;
-int pid(int Kp, int Kd, int val, int currentval)
+const int stop = 0, maxmenus = 25, bound = 100;
+int stack = 0, menu = 0, lastV = 0, armspeed = 10, armheight = 70, cbhieght = 1000, cbspeed = 10, selectedauton = 0;
+bool overrided = false;
+                      //M1 M2 M3 M4 M5 M6 M7 M8 M9 M10
+int motor[11] = {-999,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int inver[11] = {-999,  -1, 1, 1, 1, 0, 0,-1,-1,-1,-1};
+//struct motor{char m1, m2, m3, m4, m5, m6, m7, m8, m9, m10;}motor; // structure to hold the motor pwm because its smaller
+struct last{int arm, override, su, sd, co, cc, mo, mc; int lj;}last; // a structure for the last values
+void lcd(const char *line1, const char *line2)
 {
-	int error = val - currentval;
-	int d = error - previous;
-	int x = Kp * error + Kd * d;
-	return x;
-	previous = error;
+	lcdPrint(uart1, 1, line1);
+	lcdPrint(uart1, 2, line2);
+}
+void lcdmenu(){
+	int runtime = millis();
+	int currV = joystickGetAnalog(1, 4);
+	if(bound <= abs(currV) && bound > abs(lastV)){menu = (menu + maxmenus + currV/abs(currV)) % maxmenus;}
+	lastV = currV;
+	switch(menu){
+		case  0: // Battery Level
+    lcdPrint(uart1, 1, "   Main Bat %d", powerLevelMain());
+    lcdPrint(uart1, 2, "Back-up Bat %d", powerLevelMain());
+    break;
+    case  1: // Auton Viewer, needs number and name
+    lcdPrint(uart1, 1, "Running Auton %d", selectedauton);
+    lcdPrint(uart1, 2, "Name of Auton");
+    break;
+    case  2: // Phone Number Meme
+    lcdPrint(uart1, 1, "   r8 my code   ");
+    lcdPrint(uart1, 2, "  954-849-1442  ");
+    break;
+    case  3: // Bot Timer, will use millis if the test on case 17 works
+    lcdPrint(uart1, 1, "The bot has been");
+    lcdPrint(uart1, 2, "running:  %dm%ds", runtime/60000, runtime%60000/1000);
+    break;
+    case  4: // Credits
+    lcdPrint(uart1, 1, "Steve Coded This");
+    lcdPrint(uart1, 2, "Kevin Coded This");
+    break;
+	  case  5    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "Motor Vals");break;
+    case  6    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "S.B.S. Auton");break;
+    case  7    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "something");break;
+    case  8    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "something");break;
+	  case  9: // Map 1
+    lcdPrint(uart1, 1, "Ba|PA|P#|TS|Cre ");
+    lcdPrint(uart1, 2, "M1|SA|??|??|Ma1 ");
+    break;
+	  case 10    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "Motor Vals 2");break;
+  	case 11    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "RecAut Viewer");break;
+    case 12    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "PID Viewer");break;
+    case 13    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "something");break;
+    case 14: // Map 2
+    lcdPrint(uart1, 1, "M2|RA|PD|??|Ma2 ");
+    lcdPrint(uart1, 2, "J1|S1|S3|??|Ma3 ");
+    break;
+    case 15: // Joystick 1, needs formatting for analog input
+    lcdPrint(uart1, 1, "1%d 2%d5U%dD%d", joystickGetAnalog(1, 1), joystickGetAnalog(1, 2), joystickGetDigital(1,5,JOY_UP), joystickGetDigital(1,5,JOY_DOWN));
+    lcdPrint(uart1, 2, "3%d 4%d6U%dD%d", joystickGetAnalog(1, 3), joystickGetAnalog(1, 4), joystickGetDigital(1,6,JOY_UP), joystickGetDigital(1,6,JOY_DOWN));
+    break;
+    case 16: // Sensors 1
+    //lcdPrint(uart1, 1, "leftdenc %d", encoderGet(leftD));
+    //lcdPrint(uart1, 2, "rightdenc %d", encoderGet(rightD));
+    break;
+	    // these don't currently fit anywhere, need to rewrite for space efficiency and move them to appropriate spaces
+    //case 17  :lcdPrint(uart1, 1, "sarmenc %d", encoderGet(smallarmenc));lcdPrint(uart1, 2, "run time ");break;
+    case 18  :lcdPrint(uart1, 1, "Stack %d", stack); lcdPrint(uart1, 2, "Steve Didn't Code this");break;
+    case 19: // Map 3
+    lcdPrint(uart1, 1, "J2|S2|S4|??|Ma3 ");
+    lcdPrint(uart1, 2, "??|??|??|??|??? ");
+    break;
+    case 20: // Joystick 2, missing accelerometer code & it wont fit on just one screen but i dont feel like making another :)
+    lcdPrint(uart1, 1, "7U%dD%dL%dR%d Ax%d", joystickGetDigital(1,7,JOY_UP), joystickGetDigital(1,7,JOY_DOWN), joystickGetDigital(1,7,JOY_LEFT), joystickGetDigital(1,7,JOY_RIGHT), joystickGetAnalog(1, ACCEL_X));
+    lcdPrint(uart1, 2, "8U%dD%dL%dR%d Ay%d", joystickGetDigital(1,8,JOY_UP), joystickGetDigital(1,8,JOY_DOWN), joystickGetDigital(1,8,JOY_LEFT), joystickGetDigital(1,8,JOY_RIGHT), joystickGetAnalog(1, ACCEL_Y));
+    break;
+    case 21    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "Sensr Vals 2");break;
+    case 22    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "Sensr Vals 4");break;
+    case 23    :lcdPrint(uart1, 1, "Placeholder for ");lcdPrint(uart1, 2, "something");break;
+		case 24    :lcd("heyyyyyy","d000d"); break; // testing a lcd function to make this stuff smaller
+//		case 25    :lcdPrint(uart1, 1, "");lcdPrint(uart1, 2, "something");break;
+		default:
+    lcdPrint(uart1, 1,"      Error     ");
+    lcdPrint(uart1, 2, "    No Screen   ");
+    break;
+  }
+}
+void drive(int left, int right) // drive func
+{
+	motor[FrontLeft] = left * inver[FrontLeft];
+	motor[BackMidLeft] = left * inver[BackMidLeft];
+	motor[BackLeft] = left * inver[BackLeft];
+	motor[FrontMidLeft] = left * inver[FrontMidLeft];
+
+	motor[FrontRight] = right * inver[FrontRight];
+	motor[BackMidRight] = right * inver[BackMidRight];
+	motor[BackRight] = right * inver[BackRight];
+	motor[FrontMidRight] = right * inver[FrontMidRight];
 }
 
+void lockingthing(int pwm){motor[lockl] = pwm; motor[Lockr] = pwm;} // simple arm func
+void update(){ // updates the motors and hopefully the digital ports soon
+	motorSet(1, motor[1]); motorSet(2, motor[2]); motorSet(3, motor[3]); motorSet(4, motor[4]); motorSet(5, motor[5]);    /*Current error with my digital ports not working in the update*/
+	motorSet(6, motor[6]); motorSet(7, motor[7]); motorSet(8, motor[8]); motorSet(9, motor[9]); motorSet(10, motor[10]);
+	delay(20);}
+int previous;
 
-void controller(){
+void controller(){ // controller function for making it easier for recordable auton
 	int LeftJoyStick = joystickGetAnalog(1, 2), RightJoyStick = joystickGetAnalog(1, 3);
-	bool ClawOpen = joystickGetDigital(1, 5, JOY_UP), armopen = joystickGetDigital(1, 6, JOY_UP), armclose = joystickGetDigital(1, 6, JOY_DOWN),
-	mogoopen = joystickGetDigital(1, 8, JOY_UP), mogoclose = joystickGetDigital(1, 8, JOY_DOWN);
-	//stackup = joystickGetDigital(2, 6, JOY_UP), stackdown = joystickGetDigital(2, 6, JOY_DOWN),
-	//cbup = joystickGetDigital(1, 5, JOY_UP), cbdown = joystickGetDigital(1, 5, JOY_DOWN),
-	//override = joystickGetDigital(2, 5, JOY_UP);
-	if(ClawOpen)
-	{
-		if(analogRead(clawpot) > 1400)
-		{
-			claw(30);
-		}
-		claw(127);}
-	else if(analogRead(clawpot) < 1401){claw(-20);}
-	else{claw(0);}
-	if(armopen){arm(127);} else if(armclose){arm(-127);} else{arm(0);};
-	if(mogoopen){MOGO(-127);} else if(mogoclose){MOGO(127);} else{MOGO(0);};
-
-	drive(pid( 1, 1, LeftJoyStick, encoderGet(LeftEnc)),pid( 1, 1, RightJoyStick, encoderGet(RightEnc)));}
-
-void recordcode(){
-	digitalWrite(5, LOW);
-	for(int t = 0; t < 153; t++){
+	bool Lock = joystickGetDigital(1, 5, JOY_UP), Unlock = joystickGetDigital(1, 5, JOY_DOWN);
+	drive(LeftJoyStick, RightJoyStick);
+	lockingthing(127 * (Lock - Unlock));
+delay(20);}
+void recordcode(){ // simple record auton code
+	for(int t = 0; t < 1020; t++){
 		controller(); update();
-		auton[t].m1 = motor.m1; auton[t].m2 = motor.m2; auton[t].m3 = motor.m3;	auton[t].m4 = motor.m4; auton[t].m5 =	motor.m5;
-		auton[t].m6 = motor.m6;	auton[t].m7 = motor.m7;	auton[t].m8 = motor.m8;	auton[t].m9 = motor.m9;	auton[t].m10 = motor.m10;
-			wait(100);}
-		digitalWrite(5, HIGH);
-	}
-
-void reruncode(){ // totally not a stall code ;) hopefully they dont read this again
-	for(int i = 0; i < 153; i++){
-		motor.m1 = auton[i].m1;	motor.m2 = auton[i].m2;	motor.m3 = auton[i].m3;	motor.m4 = auton[i].m4;	motor.m5 = auton[i].m5;
-		motor.m6 = auton[i].m6;	motor.m7 = auton[i].m7;	motor.m8 = auton[i].m8;	motor.m9 = auton[i].m9;	motor.m10 = auton[i].m10;
+		auton[t].m1 = motor[1]; auton[t].m2 = motor[2]; auton[t].m3 = motor[3];	auton[t].m4 = motor[4]; auton[t].m5 =	motor[5];
+		auton[t].m6 = motor[6];	auton[t].m7 = motor[7];	auton[t].m8 = motor[8];	auton[t].m9 = motor[9];	auton[t].m10 = motor[10];
+		wait(10);}}
+void reruncode(){ // totally not a stall code ;) hopefully they dont read this again // ignore that <- // just a rerun code to run what we recorded
+	for(int i = 0; i < 1020; i++){
+		motor[1] = auton[i].m1;	motor[2] = auton[i].m2;	motor[3] = auton[i].m3;	motor[4] = auton[i].m4;	motor[5] = auton[i].m5;
+		motor[6] = auton[i].m6;	motor[7] = auton[i].m7;	motor[8] = auton[i].m8;	motor[9] = auton[i].m9;	motor[10] = auton[i].m10;
 		update(); wait(10);}}
-
-void savecode(){
+void savecode(){  // just a program to print out the values to a screen so we can copy paste it into our code
 	printf("\nint motor1[buffer] = {");for(int n = 0; n < buffer; n++){printf("%d,", auton[n].m1);}printf("};");wait(1000);
 	printf("\nint motor2[buffer] = {");for(int n = 0; n < buffer; n++){printf("%d,", auton[n].m2);}printf("};");wait(1000);
 	printf("\nint motor3[buffer] = {");for(int n = 0; n < buffer; n++){printf("%d,", auton[n].m3);}printf("};");wait(1000);
@@ -112,18 +146,21 @@ void savecode(){
 	printf("\nint motor8[buffer] = {");for(int n = 0; n < buffer; n++){printf("%d,", auton[n].m8);}printf("};");wait(1000);
 	printf("\nint motor9[buffer] = {");for(int n = 0; n < buffer; n++){printf("%d,", auton[n].m9);}printf("};");wait(1000);
 	printf("\nint motor10[buffer] = {");for(int n = 0; n < buffer; n++){printf("%d,", auton[n].m10);}printf("};");wait(1000);}
-
 void operatorControl(){
-
-	TaskHandle UPDATE = taskRunLoop(update, 20);
-	TaskHandle CONTROLLER = taskRunLoop(controller, 20);
-
+  TaskHandle LCDMENU = taskRunLoop(lcdmenu, 12);
+	TaskHandle UPDATE = taskRunLoop(update, 10);
+	TaskHandle CONTROLLER = taskRunLoop(controller, 14);
+	taskPrioritySet(LCDMENU, 1);
+	taskPrioritySet(CONTROLLER, 2);
+	taskPrioritySet(UPDATE, 3);
 	while (1){
-		lcdmenu();
-		bool record = joystickGetDigital(1, 7, JOY_UP), rerun = joystickGetDigital(1, 7, JOY_DOWN), save = joystickGetDigital(1, 7, JOY_LEFT);
+		bool record = joystickGetDigital(2, 7, JOY_UP), rerun = joystickGetDigital(2, 7, JOY_DOWN), save = joystickGetDigital(2, 7, JOY_LEFT);
 		if(record){taskSuspend(CONTROLLER);recordcode();taskResume(CONTROLLER);}
 		else if(rerun){taskSuspend(CONTROLLER);reruncode();taskResume(CONTROLLER);}
 		else if(save){taskSuspend(CONTROLLER);savecode();taskResume(CONTROLLER);}
-		delay(20);}
+		delay(10);}
 	taskDelete(CONTROLLER);
-	taskDelete(UPDATE);}
+	taskDelete(UPDATE);
+	taskDelete(LCDMENU);}
+/*Tetris:d=4,o=5,b=160:d6,32p,c.6,32p,8a,8c6,8a#,16a,16g,f,c,8a,8c6,8g,8a,f,c,d,8d,8e,8g,8f,8e,8d,c,c,c*/ // tetris theme song for if we want any sound on a speaker because pros doesnt have  wav support
+/* USSR_National_Anthem:d=4,o=5,b=250:f6, 2a#6, f.6, 8g6, 2a6, d6, d6, 2g6, f.6, 8d#6, 2f6, a#., 8a#, 2c6, c.6, 8d6, 2d#6, d#6, f6, 2g6, a.6, 8a#6, 2c.6, f6, 2d6, c.6, 8a#6, 2c6, a6, f6, 2a#6, a.6, 8g6, 2a6, d6, d6, 2g6, f.6, 8d#6, 2f6, a#., 8a#, 2a#6, a.6, 8g6, 1f6, 1d6, c6, a#6, a6, a#6, 2c.6, f6, 2f.6, 1a#6, a6, g6, f6, g6, 2a.6, d6, 2d6"*/

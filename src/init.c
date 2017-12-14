@@ -1,6 +1,5 @@
 #include "main.h"
-void initializeIO() {
-}
+void initializeIO() {}
 void initialize() {
   lcdInit(uart1);
   LeftEnc = encoderInit(3, 4, false);
@@ -8,5 +7,4 @@ void initialize() {
   pinMode(5, OUTPUT);
   digitalWrite(5, LOW);
   pinMode(4, OUTPUT);
-  digitalWrite(4, LOW);
-}
+  digitalWrite(4, LOW);}
