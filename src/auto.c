@@ -30,16 +30,19 @@ bool digital1[buffer] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,};
 bool digital3[buffer] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,};
+
+// motor.m1 = -left; motor.m3 = -left; motor.m10 = -right; motor.m7 = right;
 void autonomous() {
   for(int i = 0; i < 153; i++){
-    motorSet(1, motor1[i]);
+    drive( pid(1, 1, -motor1[i], encoderGet(LeftEnc)), pid(1, 1, motor7[i], encoderGet(RightEnc)));
+  //  motorSet(1, motor1[i]);
     motorSet(2, motor2[i]);
-    motorSet(3, motor3[i]);
+  //  motorSet(3, motor3[i]);
     motorSet(4, motor4[i]);
     motorSet(5, motor5[i]);
     motorSet(6, motor6[i]);
-    motorSet(7, motor7[i]);
+  //  motorSet(7, motor7[i]);
     motorSet(8, motor8[i]);
     motorSet(9, motor9[i]);
-    motorSet(10, motor10[i]);
+  //  motorSet(10, motor10[i]);
     wait(100);}}

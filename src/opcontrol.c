@@ -50,6 +50,18 @@ void scoredatcone(int x){
 	potentcb(cb_pwm, cbstartpos, analogRead(cbpot));
 	potentarm(arm_const, armthing[0], analogRead(rarmpot));} */
 
+
+int previous;
+int pid(int Kp, int Kd, int val, int currentval)
+{
+	int error = val - currentval;
+	int d = error - previous;
+	int x = Kp * error + Kd * d;
+	return x;
+	previous = error;
+}
+
+
 void controller(){
 	int LeftJoyStick = joystickGetAnalog(1, 2), RightJoyStick = joystickGetAnalog(1, 3);
 	bool ClawOpen = joystickGetDigital(1, 5, JOY_UP), armopen = joystickGetDigital(1, 6, JOY_UP), armclose = joystickGetDigital(1, 6, JOY_DOWN),
@@ -69,20 +81,7 @@ void controller(){
 	if(armopen){arm(127);} else if(armclose){arm(-127);} else{arm(0);};
 	if(mogoopen){MOGO(-127);} else if(mogoclose){MOGO(127);} else{MOGO(0);};
 
-	drive(LeftJoyStick, RightJoyStick);}
-
-
-//	if(override && !last.override){overrided = abs(overrided - 1);}
-//	if(ClawOpen && !last.co){dgtl.d5==true;}
-//	else if(ClawClose && !last.cc){dgtl.d5==false;}
-//	if(mogoopen && !last.mo){dgtl.d4==true;}
-//	else if(mogoclose && !last.mc){dgtl.d4==false;}
-	//if(armopen == 1 && last.arm == 0 && !overrided){scoredatcone(stack); stack += 1;}
-	//else if(armclose && !overrided){stack -= 1;}
-	//if(stackup && !last.su){stack += 1;}
-	//else if(stackdown && !last.sd){stack -= 1;}
-	//if(overrided){arm((armopen - armclose) * arm_const); cb((cbup - cbdown) * cb_pwm);}
-	//armopen = last.arm, last.sd = stackdown, last.su = stackup,	last.cc = ClawClose, last.co = ClawClose, last.mo = mogoopen, last.mc = mogoclose, last.override = override;}
+	drive(pid( 1, 1, LeftJoyStick, encoderGet(LeftEnc)),pid( 1, 1, RightJoyStick, encoderGet(RightEnc)));}
 
 void recordcode(){
 	digitalWrite(5, LOW);

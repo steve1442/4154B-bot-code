@@ -32,6 +32,12 @@
 extern "C" {
 #endif
 
+Encoder LeftEnc;
+Encoder RightEnc;
+
+void drive(int left, int right);
+int pid(int Kp, int Kd, int val, int currentval);
+
 #define buffer 153
 struct auton { char m1, m2, m3, m4, m5, m6, m7, m8, m9 ,m10;}auton[buffer];
 
