@@ -3,8 +3,8 @@ void initializeIO() {
 }
 void initialize() {
   lcdInit(uart1);
-  LeftEnc = encoderInit(1, 2, false);
-  RightEnc = encoderInit(3, 4, true);
+  LeftEnc = encoderInit(3, 4, false);
+  RightEnc = encoderInit(2, 1, true);
   pinMode(5, OUTPUT);
   digitalWrite(5, LOW);
   pinMode(4, OUTPUT);

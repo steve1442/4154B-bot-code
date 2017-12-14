@@ -1,5 +1,7 @@
 #include "main.h"
 
+
+
 const int armthing[10] = {1,2,3,4,5,6,7,8,9,10}, cbendpos = 100, cbstartpos = 0, cb_pwm = 127, arm_const = 127, leftfront = 1,
 lefttback = 3, rightfront = 10, rightback = 7, rightarm = 2, leftarm = 9, mobilegoalright = 4, mobilegoalleft = 8, clawleft = 5, clawright = 6,
 stop = 0, maxmenus = 6, bound = 100, larmpot = 5, rarmpot = 2, cbpot = 3, clawpot = 1, rightshaft = 1, leftshaft = 3;
